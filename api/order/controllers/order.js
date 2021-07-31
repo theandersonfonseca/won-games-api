@@ -30,7 +30,7 @@ module.exports = {
 
     try {
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: total * 100,
+        amount: total,
         currency: "usd",
         metadata: { cart: JSON.stringify(cartGamesIds) },
       });
@@ -60,17 +60,27 @@ module.exports = {
       .query("user", "users-permissions")
       .findOne({ id: userId });
 
-    // simplify cart data
     const cartGamesIds = await strapi.config.functions.cart.cartGamesIds(cart);
 
-    // pegar os jogos
     const games = await strapi.config.functions.cart.cartItems(cartGamesIds);
+
+    const total_in_cents = await strapi.config.functions.cart.total(games);
+
+    let paymentInfo;
+    if (total_in_cents !== 0) {
+      try {
+        paymentInfo = await stripe.paymentMethods.retrieve(paymentMethod);
+      } catch (err) {
+        ctx.response.status = 402;
+        return { error: err.message };
+      }
+    }
 
     const entry = {
       total_in_cents,
       payment_intent_id: paymentIntentId,
-      card_brand: null,
-      card_last4: null,
+      card_brand: paymentInfo?.card?.brand,
+      card_last4: paymentInfo?.card?.last4,
       user: userInfo,
       games,
     };
