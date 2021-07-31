@@ -2,15 +2,14 @@
 
 const stripe = require("stripe")(process.env.STRIPE_KEY);
 const { sanitizeEntity } = require("strapi-utils");
+const orderTemplate = require("../../../config/email-templates/order");
 
 module.exports = {
   createPaymentIntent: async (ctx) => {
     const { cart } = ctx.request.body;
 
-    // simplify cart data
     const cartGamesIds = await strapi.config.functions.cart.cartGamesIds(cart);
 
-    // get all games
     const games = await strapi.config.functions.cart.cartItems(cartGamesIds);
 
     if (!games.length) {
@@ -44,18 +43,14 @@ module.exports = {
   },
 
   create: async (ctx) => {
-    // pegar as informações do frontend
     const { cart, paymentIntentId, paymentMethod } = ctx.request.body;
 
-    // pega o token
     const token = await strapi.plugins[
       "users-permissions"
     ].services.jwt.getToken(ctx);
 
-    // pega o id do usuario
     const userId = token.id;
 
-    // pegar as informações do usuário
     const userInfo = await strapi
       .query("user", "users-permissions")
       .findOne({ id: userId });
@@ -87,7 +82,23 @@ module.exports = {
 
     const entity = await strapi.services.order.create(entry);
 
-    // retornando que foi salvo no banco
+    await strapi.plugins.email.services.email.sendTemplatedEmail(
+      {
+        to: userInfo.email,
+        from: "no-reply@wongames.com",
+      },
+      orderTemplate,
+      {
+        user: userInfo,
+        payment: {
+          total: `$ ${total_in_cents / 100}`,
+          card_brand: entry.card_brand,
+          card_last4: entry.card_last4,
+        },
+        games,
+      }
+    );
+
     return sanitizeEntity(entity, { model: strapi.models.order });
   },
 };
