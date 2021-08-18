@@ -6,4 +6,14 @@
 
 ---
 
+## 💻 Entity Relationship Chart
+
+![](./github/entities1.png)
+
+---
+
+![](./github/entities2.png)
+
+---
+
 Feito com 💜 por **[Anderson Fonseca](https://github.com/theandersonfonseca)**.
